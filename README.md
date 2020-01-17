@@ -1,6 +1,6 @@
 # Knowledge-Enhanced Word Sense Disambiguation: Language Model and Beyond
 
-This repository is the open source code for KESE, a Knowledge-Enhanced Sense Embedding method.
+This repository is the open source code for KESE, a Knowledge-Enhanced Sense Embedding method. Many modules come from [LMMS](https://github.com/danlou/lmms)
 
 ### Quick Evaluation
 For a quick evaluation of our systems' (KESE<sub>base</sub>, KESE<sub>enhanced</sub>, KESE<sub>sup</sub>) results on five WSD datasets (SE2, SE3, SE07, SE13 and SE15) and the combined dataset (ALL), run command.sh on your Linux machine or use a Git bash tool on Windows. 
