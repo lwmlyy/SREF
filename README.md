@@ -7,10 +7,10 @@ For a quick evaluation of our systems' (KESE<sub>base</sub>, KESE<sub>enhanced</
 
 ## Table of Contents
 - [Requirements](#Requirements)
-- [Augmented_gloss](#Crawl augmented_gloss)
-- [Loading BERT](#Loading BERT)
-- [Basic sense embeddings](#basic sense embeddings)
-- [WSD evaluation](#WSD evaluation)
+- [Augmented_gloss](#Crawl-augmented_gloss)
+- [Loading BERT](#Loading-BERT)
+- [Basic sense embeddings](#basic-sense-embeddings)
+- [WSD evaluation](#WSD-evaluation)
 
 
 ### Requirements
