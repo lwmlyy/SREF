@@ -1,9 +1,9 @@
-# Knowledge-Enhanced Word Sense Disambiguation: Language Model and Beyond
+# A Synset Relation-enhanced Framework with a Try-again Mechanism for Word Sense Disambiguation
 
-This repository is the open source code for KESE, a Knowledge-Enhanced Sense Embedding method.
+This repository is the open source code for SREF, a Knowledge-Enhanced Sense Embedding method.
 
 ### Quick Evaluation
-For a quick evaluation of our systems' (KESE<sub>base</sub>, KESE<sub>enhanced</sub>, KESE<sub>sup</sub>) results on five WSD datasets (SE2, SE3, SE07, SE13 and SE15) and the combined dataset (ALL), run command.sh on your Linux machine or use a Git bash tool on Windows. 
+For a quick evaluation of our systems' (SREF<sub>kb</sub>, SREF<sub>sup</sub>) results on five WSD datasets (SE2, SE3, SE07, SE13 and SE15) and the combined dataset (ALL), run command.sh on your Linux machine or use a Git bash tool on Windows. 
 
 ## Table of Contents
 - [Requirements](#Requirements)
@@ -27,7 +27,7 @@ The WordNet package for NLTK isn't installed by pip, but we can install it easil
 $ python -c "import nltk; nltk.download('wordnet')"
 ```
 
-We use WordNet-3.0 for the entire experiments. NOTE: the online version of WordNet is the latest version-3.1, which returns different results from those from WordNet-3.0 from python.
+We use WordNet-3.0 for the entire experiment. NOTE: the online version of WordNet is the latest version-3.1, which returns different results from those from WordNet-3.0 from python.
 
 
 The basic sense representations are learned from BERT<sub>LARGE_CASED</sub>, so download it with the following code:
@@ -71,60 +71,48 @@ $ nohup bert-serving-start -pooling_strategy REDUCE_MEAN -model_dir data/bert/ca
 
 When you start with the evaluation process, use the following code to kill the above server. NOTE: this will kill all processes that are related to 'bert-serving-start'
 ```bash
-$ ps -ef | grep bert-serving-start | grep -v grep | awk '{print "kill -9 "$2}' | sh
+$ ps -ef  grep bert-serving-start  grep -v grep  awk '{print "kill -9 "$2}'  sh
 ```
 
 ### basic sense embeddings
-When the BERT server is ready, you should run emb_glosses.py to get the basic sense embeddings from the sense gloss, augmented sentences, and example sentences (usage). For KESE<sub>base</sub>, run the following code:
+When the BERT server is ready, you should run emb_glosses.py to get the basic sense embeddings from the sense gloss, augmented sentences, and example sentences (usage). For SREF<sub>kb</sub>, run the following code:
 #####Parameter choice:  
-- -emb_strategy aug_gloss, KESE<sub>base</sub>
-- -emb_strategy aug_gloss+examples, KESE<sub>enhanced</sub>, KESE<sub>sup</sub>
+- -emb_strategy aug_gloss+examples, SREF<sub>enhanced</sub>, SREF<sub>sup</sub>
 ```bash
-$ python emb_glosses.py -emb_strategy aug_gloss
+$ python emb_glosses.py -emb_strategy aug_gloss+examples
 ```
 
-You should get a file (in python pickle format, faster to save and load) for processes with each parameter. Also, we provided these files: [aug_gloss](https://drive.google.com/open?id=1h8mpFLCfe095URAFPxVuciAO6nf3y-Mq), [aug_gloss+examples](https://drive.google.com/open?id=1E28mw0T-5vI4FpzyJ9Eb9aEawUYWTFao) so that you can implement the following codes conveniently (put them in /data/vectors).
+Also, we provided the file: [aug_gloss+examples](https://drive.google.com/open?id=1Ef7--gC-jJXXjn8Dryp4umO6WnKQXvsD) so that you can implement the following codes conveniently (put them in /data/vectors).
+
+### sense embeddings enhancement
+run synset_expand.py to enhance the basic sense embeddings.
+```bash
+$ python synset_expand.py
+```
+
+
 
 
 ### WSD evaluation
 Before evalution, you should stop the previous bert-as-server process and starts a new one with the parameter **-pooling_strategy** set to **NONE**.  
-When the basic embeddings and BERT server are ready, run eval_nn.py to evaluate our method. Note that we merge the synset expansion (synset_expand.py) algorithm in this file as a function. You should get the following results for two knowledge-based systems  
+When the basic embeddings and BERT server are ready, run eval_nn.py to evaluate our method. Note that we merge the synset expansion (synset_expand.py) algorithm in this file as a function. You should get the following results for the knowledge-based system  
 
 #####Parameter choice:  
-- -emb_strategy aug_gloss+r_asy, KESE<sub>base</sub>
-- -emb_strategy aug_gloss+r_sy+examples, KESE<sub>enhanced</sub>
-- -emb_strategy aug_gloss+r_sy+examples+lmms, KESE<sub>sup</sub>
+- -emb_strategy aug_gloss+examples, SREF<sub>kb</sub>
+- -emb_strategy aug_gloss+examples+lmms, SREF<sub>sup</sub>
+- -sec_wsd False to disable the second wsd/ try-again mechanism
 
 ```bash
 $ python emb_glosses.py -emb_strategy aug_gloss+r_asy
 ```
-
-KESE<sub>base</sub>
->>  semeval2007 P= 58% R= 58% F1= 58%  
-    semeval2013 P= 72.5% R= 72.5% F1= 72.5%  
-    semeval2015 P= 73.5% R= 73.5% F1= 73.5%  
-    senseval2 P= 68.9% R= 68.9% F1= 68.9%  
-    senseval3 P= 66.2% R= 66.2% F1= 66.2%  
-    ALL P= 69% R= 69% F1= 69%  
     
-KESE<sub>enhanced</sub>
->>  semeval2007 P= 63.5% R= 63.5% F1= 63.5%  
-    semeval2013 P= 74.3% R= 74.3% F1= 74.3%  
-    semeval2015 P= 76.3% R= 76.3% F1= 76.3%  
-    senseval2 P= 71.6% R= 71.6% F1= 71.6%  
-    senseval3 P= 69.4% R= 69.4% F1= 69.4%  
-    ALL P= 71.8% R= 71.8% F1= 71.8%  
-    
-For KESE<sub>sup</sub>, you need to get the [LMMS supervised sense embeddings](https://drive.google.com/open?id=1JwkqCRfPSODk5ePwcuFsTK_bxvd9YI9c) by train.py and extend.py. It relies on SemCor to learn sense embeddings as a starting point. By running eval_nn.py, you should get the following results.
+For SREF<sub>sup</sub>, you need to get the [LMMS supervised sense embeddings](https://drive.google.com/open?id=13lD2t3aj-n22fvv77MWMTn67pZw196yI) by train.py. It relies on SemCor to learn sense embeddings as a starting point. By running eval_nn.py, you should get the following results.
 
 ```bash
 $ python emb_glosses.py -emb_strategy aug_gloss+r_sy+examples+lmms
 ```
 
-KESE<sub>enhanced</sub>
->>  semeval2007 P= 72.5% R= 72.5% F1= 72.5%  
-    semeval2013 P= 78.1% R= 78.1% F1= 78.1%  
-    semeval2015 P= 79% R= 79% F1= 79%  
-    senseval2 P= 78.6% R= 78.6% F1= 78.6%  
-    senseval3 P= 76.4% R= 76.4% F1= 76.4%  
-    ALL P= 77.6% R= 77.6% F1= 77.6%  
+| |SE2|SE3|SE07|SE13|SE15|ALL|
+|----------------|----|----|----|----|----|-----------------|
+|SREFkb|72.7|71.5|61.8|76.4|79.5|73.5|
+|SREFsup|78.6|76.6|72.1|78|80.5|77.8 |  

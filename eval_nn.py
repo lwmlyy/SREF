@@ -17,6 +17,7 @@ from vectorspace import get_sk_pos
 
 from concat import *
 from synset_expand import *
+import pickle
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -99,6 +100,64 @@ def str_scores(scores, n=3, r=5):
     return str([(l, round(s, r)) for l, s in scores[:n]])
 
 
+def sec_wsd(matches):
+    from extend import wn_all_lexnames_groups
+    lexname_groups = wn_all_lexnames_groups()
+    preds = [sk for sk, sim in matches if sim > args.thresh][:]
+    preds_sim = [sim for sk, sim in matches if sim > args.thresh][:]
+    norm_predsim = np.exp(preds_sim) / np.sum(np.exp(preds_sim))
+    name = locals()
+    if len(preds) != 1:
+        pos2type = {'ADJ': 'as', 'ADV': 'r', 'NOUN': 'n', 'VERB': 'v'}
+        synset_list = retrieve_sense(curr_lemma, pos2type[curr_postag])
+        keys = [k[0] for k in matches][:2]
+        try:
+            synsets = {wn.lemma_from_key(j).synset(): i for i, j in enumerate(keys)}
+        except:
+            synsets = {
+                [wn.synset(k) for k in synset_list if j in [l.key() for l in wn.synset(k).lemmas()]][0]: i for
+                i, j in enumerate(keys)}
+        strategy = 'r_sy+relations'
+        # print([i.lexname() for i in synsets])
+        all_related = Counter()
+        for potential_synset in synsets.keys():
+            name[potential_synset.name()] = set(gloss_extend(potential_synset.name(), strategy))
+            all_related.update(list(name[potential_synset.name()]))
+
+        for synset, count in all_related.items():
+            if count == 1:
+                continue
+            for potential_synset in synsets.keys():
+                while synset in name[potential_synset.name()]:
+                    name[potential_synset.name()].remove(synset)
+
+        for synset_index, potential_synset in enumerate(synsets.keys()):
+            lexname = potential_synset.lexname()
+            name['sim_%s' % potential_synset.name()] = dict()
+
+            if len(set([i.lexname() for i in synsets])) > 1:
+                combine_list = list(name[potential_synset.name()]) + lexname_groups[lexname]
+            else:
+                combine_list = list(name[potential_synset.name()])
+            for synset in combine_list:
+                if synset in synsets.keys() and curr_postag not in ['ADJ', 'ADV']:
+                    continue
+                sim = np.dot(curr_vector, senses_vsm.get_vec(synset.lemmas()[0].key()))
+                name['sim_%s' % potential_synset.name()][synset] = (
+                    sim, 'relation' if synset in name[potential_synset.name()] else 'lexname')
+
+        key_score = {keys[j]: preds_sim[j] + np.sum(
+            sorted([syn[0] for syn in name['sim_%s' % i.name()].values()], reverse=True)[:1]) for i, j in
+                     synsets.items()}
+
+        final_key = [sorted(key_score.items(), key=lambda x: x[1], reverse=True)[0][0]]
+
+    else:
+        final_key = preds
+    
+    return final_key
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Nearest Neighbors WSD Evaluation.',
@@ -107,13 +166,14 @@ if __name__ == '__main__':
                         help='Path to LMMS vector')
     parser.add_argument('-wsd_fw_path', help='Path to WSD Evaluation Framework', required=False,
                         default='data/wsd_eval/WSD_Evaluation_Framework/')
-    parser.add_argument('-emb_strategy', type=str, default='aug_gloss+r_asy',
-                        choices=['aug_gloss+r_asy', 'aug_gloss+r_sy+examples', 'aug_gloss+r_sy+examples+lmms'],
+    parser.add_argument('-emb_strategy', type=str, default='aug_gloss+r_sy',
+                        choices=['aug_gloss+r_sy+examples', 'aug_gloss+r_sy+examples+lmms'],
                         help='different components to learn the basic sense embeddings', required=False)
     parser.add_argument('-batch_size', type=int, default=32, help='Batch size (BERT)', required=False)
     parser.add_argument('-merge_strategy', type=str, default='mean', help='WordPiece Reconstruction Strategy', required=False)
     parser.add_argument('-ignore_lemma', dest='use_lemma', action='store_false', help='Ignore lemma features', required=False)
     parser.add_argument('-ignore_pos', dest='use_pos', action='store_false', help='Ignore POS features', required=False)
+    parser.add_argument('-sec_wsd', default=True, help='whether to implement second wsd', required=False)
     parser.add_argument('-thresh', type=float, default=-1, help='Similarity threshold', required=False)
     parser.add_argument('-k', type=int, default=1, help='Number of Neighbors to accept', required=False)
     parser.set_defaults(use_lemma=True)
@@ -125,24 +185,20 @@ if __name__ == '__main__':
     Load sense embeddings for evaluation.
     Check the dimensions of the sense embeddings to guess that they are composed with static embeddings.
     """
-    if 'lmms' not in args.emb_strategy:
-        args.lmms_path = None
-    else:
-        args.lmms_path = args.lmms_path
-
-    logging.info('Concatenating SensesVSM ...')
-    """
-    Expand the basic sense embeddings with WordNet relations (asymmetric and symmetric scheme)
-    """
-    expanded_vec = expand(args.emb_strategy)
-    # concatenate sense embeddings if there are more than one for each sense
-    if 'lmms' in args.emb_strategy:
-        concatenation = concat(expanded_vec, args.lmms_path)
-    else:
-        concatenation = expanded_vec
     logging.info('Loading SensesVSM ...')
-    senses_vsm = SensesVSM(concatenation, normalize=True)
+    
+    emb_wn = pickle.load(open('data/vectors/emb_glosses_hyper_aug_gloss+r_sy+examples.txt', 'rb'))
+    if 'lmms' in args.emb_strategy:
+        lmms = pickle.load(open(args.lmms_path, 'rb'))
+
+        for sense_key, sense_vector in emb_wn.items():
+                if sense_key in lmms:
+                    lmms[sense_key] = np.array(lmms[sense_key])/np.linalg.norm(np.array(lmms[sense_key]))
+                    emb_wn[sense_key] = sense_vector + lmms[sense_key].tolist()
+                else:
+                    emb_wn[sense_key] = emb_wn[sense_key] + emb_wn[sense_key]
     logging.info('Loaded SensesVSM')
+    senses_vsm = SensesVSM(emb_wn, normalize=True)
 
     """
     Initialize various counters for calculating supplementary metrics for ALL dataset.
@@ -246,7 +302,8 @@ if __name__ == '__main__':
                         # predictions can be further filtered by similarity threshold or number of accepted neighbors
                         # if specified in CLI parameters
                         preds = [sk for sk, sim in matches if sim > args.thresh][:args.k]
-
+                        if args.sec_wsd:
+                            preds = sec_wsd(matches)[:1]
                         if len(preds) > 0:
                             results_f.write('%s %s\n' % (curr_sense, preds[0]))
 
@@ -260,11 +317,6 @@ if __name__ == '__main__':
                         gold_sensekeys = id2senses[curr_sense]
                         pos_dict = {'NOUN': 'n', 'ADJ': 'a', 'ADV': 'r', 'VERB': 'v'}
                         wn1st = [i.key() for i in wn.synsets(curr_lemma, pos_dict[curr_postag])[0].lemmas()]
-                        if data_index != 5:
-                            if set(wn1st).intersection(set(gold_sensekeys)):
-                                mfs_all += 1
-                            else:
-                                lfs_all += 1
                         if len(set(preds).intersection(set(gold_sensekeys))) > 0:
                             n_correct += 1
                             wsd_correct = True
@@ -272,12 +324,7 @@ if __name__ == '__main__':
                                 failed_by_pos[curr_postag].append((preds[0], gold_sensekeys))
                             else:
                                 failed_by_pos[curr_postag].append((None, gold_sensekeys))
-                            if data_index != 5:
-                                if set(wn1st).intersection(set(gold_sensekeys)):
-                                    mfs_correct += 1
-                                else:
-                                    lfs_correct += 1
-                        # else:
+
                         # register if our prediction belonged to a different POS than gold
                         if len(preds) > 0:
                             pred_sk_pos = get_sk_pos(preds[0])
@@ -300,5 +347,3 @@ if __name__ == '__main__':
         pos_correct += np.array([len(failed_by_pos[i]) for i in pos_position])
     print('F-all %f' % (num_correct/num_all))
     print(pos_position, pos_all.tolist(), pos_correct.tolist(), (pos_correct/pos_all).tolist())
-    print(mfs_all, lfs_all, mfs_all+lfs_all, num_all-(mfs_all+lfs_all))
-    print('mfs_correct: %s, lfs_correct: %s' % (str(mfs_correct/mfs_all), str(lfs_correct/lfs_all)))
