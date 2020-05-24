@@ -49,7 +49,8 @@ $ python example_filter.py
 ### Loading BERT
 
 The project relies on [bert-as-service](https://github.com/hanxiao/bert-as-service), to retrieve BERT embeddings. This process requires a GPU devise which has at least 5GB memory (Large memory, Faster processing). You should not set -max_seq_len to a large number unless it is necessary, because it slows down the process dramatically (a lot of padding of 0s and thus unnecessary calculations).
-#####Parameter choice:  
+
+####Parameter choice:  
 - -pooling_strategy REDUCE_MEAN, for basic sense embedding learning
 - -pooling_strategy NONE, for evaluation
 ```bash
