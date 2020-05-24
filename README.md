@@ -1,8 +1,6 @@
 # A Synset Relation-enhanced Framework with a Try-again Mechanism for Word Sense Disambiguation
 
-This repository is the open source code for SREF, a Knowledge-Enhanced Sense Embedding method.
-=======
-This repository is the open source code for SREF, a Knowledge-Enhanced Sense Embedding method. Many modules come from [LMMS](https://github.com/danlou/lmms)
+This repository is the open source code for SREF, a Knowledge-Enhanced Sense Embedding method. Many modules come from [LMMS](https://github.com/danlou/lmms). We thank the authors for opening their valuable modules.
 
 ### Quick Evaluation
 For a quick evaluation of our systems' (SREF<sub>kb</sub>, SREF<sub>sup</sub>) results on five WSD datasets (SE2, SE3, SE07, SE13 and SE15) and the combined dataset (ALL), run command.sh on your Linux machine or use a Git bash tool on Windows. 
