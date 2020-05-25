@@ -102,7 +102,7 @@ When the basic embeddings and BERT server are ready, run eval_nn.py to evaluate 
 - -sec_wsd False to disable the second wsd/ try-again mechanism
 
 ```bash
-$ python emb_glosses.py -sec_wsd True
+$ python eval_nn.py -sec_wsd True
 ```
     
 For SREF<sub>sup</sub>, you need to get the [LMMS supervised sense embeddings](https://drive.google.com/open?id=13lD2t3aj-n22fvv77MWMTn67pZw196yI) by train.py. It relies on SemCor to learn sense embeddings as a starting point. By running eval_nn.py, you should get the following results.
