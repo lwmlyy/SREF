@@ -9,7 +9,8 @@ from nltk.corpus import wordnet as wn
 from bert_as_service import bert_embed
 from bert_as_service import tokenizer as bert_tokenizer
 import json
-import pickle
+from tqdm import tqdm
+from bs4 import BeautifulSoup
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -46,40 +47,72 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def retrieve_xwn():
-    noun_xwn = json.load(open('./XWN/noun.json'))
-    verb_xwn = json.load(open('./XWN/verb.json'))
-    adj_xwn = json.load(open('./XWN/adj.json'))
-    adv_xwn = json.load(open('./XWN/adv.json'))
-    return noun_xwn, verb_xwn, adj_xwn, adv_xwn
+def get_adj_keys():
+    key_list = []
+    for synset in wn.all_synsets('a'):
+        for lemma in synset.lemmas():
+            key_list.extend([lemma.key()])
+    return key_list
 
 
-def train(train_path, eval_path, vecs_path, merge_strategy='mean', max_seq_len=512, max_instances=float('inf')):
-    sense_vecs = {}
-    semcor_list = list()
-    sense_mapping = get_sense_mapping(eval_path)
-
-    name = locals()
-    # name['n_xwn'], name['v_xwn'], name['a_xwn'], name['r_xwn'] = retrieve_xwn()
-    # print('XWN loaded.')
+def train(vecs_path, dataset, merge_strategy='mean', max_instances=float('inf')):
     batch_all = []
-    for sent_idx, sent_et in enumerate(read_xml_sents(train_path)):
-        entry = {f: [] for f in ['token', 'token_mw', 'lemma', 'senses', 'pos', 'id']}
-        for ch in sent_et.getchildren():
-            for k, v in ch.items():
-                entry[k].append(v)
-            entry['token_mw'].append(ch.text)
-            if 'id' in ch.attrib.keys():
-                entry['senses'].append(sense_mapping[ch.attrib['id']])
-            else:
-                entry['senses'].append(None)
-        entry['token'] = sum([t.split() for t in entry['token_mw']], [])
-        entry['sentence'] = ' '.join([t for t in entry['token_mw']])
-        if entry['sentence']:
-            batch_all.append(entry)
+    sense_vecs = {}
+    if 'semcor' not in dataset:
+        new_dataset = dataset
+        print('loading %s' % new_dataset)
+        extra_path = 'path to your training data' + new_dataset
+        wngt_corpus = open(extra_path, 'r').read()
+        wsd_bs = BeautifulSoup(wngt_corpus, 'xml')
+        text_all = wsd_bs.find_all('sentence')
+        type2pos = {'j': 'ADJ', 'n': 'NOUN', 'r': 'ADV', 'v': 'VERB'}
+        adj_keys = get_adj_keys()
+        for sent in tqdm(text_all):
+            entry = {f: [] for f in ['token', 'token_mw', 'lemma', 'senses', 'pos', 'id']}
+            for word in sent.find_all('word'):
+                lemma = word['lemma'] if 'lemma' in word.attrs else word['surface_form'].replace('_', ' ')
+                pos = type2pos[word['pos'][0].lower()] if word['pos'][0].lower() in type2pos else word['pos']
+                label = word['wn30_key'].split(';') if 'wn30_key' in word.attrs else None
+                if label and '%3:' in ''.join(label):
+                    for index, key in enumerate(label):
+                        if key not in adj_keys and '%3:' in key:
+                            pos_string = key.split('%')[1][0]
+                            replace_string = '35'.replace(key.split('%')[1][0], '')
+                            label[index] = key.replace('%' + pos_string + ':', '%' + replace_string + ':')
+                entry['lemma'].append(lemma)
+                entry['pos'].append(pos)
+                entry['token_mw'].append(word['surface_form'].replace('_', ' '))
+                entry['senses'].append(label)
+            entry['token'] = sum([t.split() for t in entry['token_mw']], [])
+            entry['sentence'] = ' '.join([t for t in entry['token_mw']])
+            if any(entry['senses']):
+                batch_all.append(entry)
+
+    else:
+        train_path = args.wsd_fw_path + 'Training_Corpora/SemCor/semcor.data.xml'
+        eval_path = args.wsd_fw_path + 'Training_Corpora/SemCor/semcor.gold.key.txt'
+        print('loading %s' % dataset)
+        sense_mapping = get_sense_mapping(eval_path)
+        for sent_idx, sent_et in enumerate(read_xml_sents(train_path)):
+            entry = {f: [] for f in ['token', 'token_mw', 'lemma', 'senses', 'pos', 'id']}
+            for ch in sent_et.getchildren():
+                for k, v in ch.items():
+                    entry[k].append(v)
+                entry['token_mw'].append(ch.text)
+                if 'id' in ch.attrib.keys():
+                    entry['senses'].append(sense_mapping[ch.attrib['id']])
+                else:
+                    entry['senses'].append(None)
+            entry['token'] = sum([t.split() for t in entry['token_mw']], [])
+            entry['sentence'] = ' '.join([t for t in entry['token_mw']])
+            if entry['sentence']:
+                batch_all.append(entry)
+
+    if args.cut_train:
+        batch_all = batch_all[:int(len(batch_all)*(args.portion/10))]
+
     print('sents number: %s, batch number: %s' % (str(len(batch_all)), str(len(batch_all) / args.batch_size)))
-    for batch_idx, batch in enumerate(chunks(batch_all, args.batch_size)):
-        batch_t0 = time()
+    for batch_idx, batch in enumerate(tqdm(chunks(batch_all, args.batch_size))):
         batch_sents = [e['sentence'] for e in batch]
         batch_bert = bert_embed(batch_sents, merge_strategy=merge_strategy)
 
@@ -97,11 +130,8 @@ def train(train_path, eval_path, vecs_path, merge_strategy='mean', max_seq_len=5
             for mw_idx, tok_idxs in idx_map_abs:
                 if sent_info['senses'][mw_idx] is None:
                     continue
-
                 vec = np.array([sent_bert[i][1] for i in tok_idxs], dtype=np.float32).mean(axis=0)
-
                 for sense in sent_info['senses'][mw_idx]:
-                    semcor_list.append(sense)
                     try:
                         if sense_vecs[sense]['vecs_num'] < max_instances:
                             sense_vecs[sense]['vecs_sum'] += vec
@@ -109,35 +139,31 @@ def train(train_path, eval_path, vecs_path, merge_strategy='mean', max_seq_len=5
                     except KeyError:
                         sense_vecs[sense] = {'vecs_sum': vec, 'vecs_num': 1}
 
-        batch_tspan = time() - batch_t0
-        logging.info('%.3f sents/sec - %d batch_num/%d, %d senses' % (
-            args.batch_size / batch_tspan, batch_idx, len(batch_all) / args.batch_size, len(sense_vecs)))
+    logging.info('Writing Sense Vectors ...')
 
+    import pickle
     sense_dict = dict()
     for sense, vecs_info in sense_vecs.items():
         vec = vecs_info['vecs_sum'] / vecs_info['vecs_num']
         sense_dict[sense] = vec
-    pickle.dump(sense_dict, open(args.out_path, 'wb'), -1)
+    pickle.dump(sense_dict, open(args.out_path % args.portion, 'wb'), -1)
     logging.info('Written %s' % vecs_path)
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Create Initial Sense Embeddings.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-wsd_fw_path', help='Path to WSD Evaluation Framework', required=False,
                         default='data/wsd_eval/WSD_Evaluation_Framework/')
-    parser.add_argument('-dataset', default='semcor', help='Name of dataset', required=False, choices=['semcor'])
+    parser.add_argument('-dataset', default='semcor', help='Name of dataset', required=False,
+                        choices=['semcor', 'senseval2-LS', 'senseval3-LS'])
     parser.add_argument('-batch_size', type=int, default=64, help='Batch size (BERT)', required=False)
+    parser.add_argument('-max_seq_len', type=int, default=64, help='Maximum sequence length (BERT)', required=False)
     parser.add_argument('-merge_strategy', type=str, default='mean', help='WordPiece Reconstruction Strategy', required=False,
                         choices=['mean', 'first', 'sum'])
-    parser.add_argument('-max_instances', type=float, default=float('inf'), help='Maximum number of examples for each sense', required=False)
-    parser.add_argument('-out_path', help='Path to resulting vector set', required=False, default='data/vectors/semcor.txt')
+    parser.add_argument('-cut_train', type=bool, default=False, help='whether to cut training data', required=False)
+    parser.add_argument('-portion', type=int, default=1, help='portion of SemCor used for training', required=False)
+    parser.add_argument('-max_instances', type=float, default=float('inf'),
+                        help='Maximum number of examples for each sense', required=False)
+    parser.add_argument('-out_path', help='Path to resulting vector set', required=False, default='your output path')
     args = parser.parse_args()
-
-    layers = list(range(-4, 0))[::-1]
-    layers_str = '%d_%d' % (layers[0], layers[-1])
-
-	train_path = args.wsd_fw_path + 'Training_Corpora/SemCor/semcor.data.xml'
-	keys_path = args.wsd_fw_path + 'Training_Corpora/SemCor/semcor.gold.key.txt'
-
-    train(train_path, keys_path, args.out_path, args.merge_strategy, args.max_seq_len, args.max_instances)
+    train(args.out_path, args.dataset, args.merge_strategy, args.portion)
