@@ -171,8 +171,8 @@ if __name__ == '__main__':
                         help='Path to LMMS vector')
     parser.add_argument('-wsd_fw_path', help='Path to WSD Evaluation Framework', required=False,
                         default='data/wsd_eval/WSD_Evaluation_Framework/')
-    parser.add_argument('-emb_strategy', type=str, default='aug_gloss+r_sy',
-                        choices=['aug_gloss+r_sy+examples', 'aug_gloss+r_sy+examples+lmms'],
+    parser.add_argument('-emb_strategy', type=str, default='aug_gloss+examples',
+                        choices=['aug_gloss+examples', 'aug_gloss+r_sy+examples+lmms'],
                         help='different components to learn the basic sense embeddings', required=False)
     parser.add_argument('-batch_size', type=int, default=32, help='Batch size (BERT)', required=False)
     parser.add_argument('-merge_strategy', type=str, default='mean', help='WordPiece Reconstruction Strategy', required=False)
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     """
     logging.info('Loading SensesVSM ...')
     
-    emb_wn = pickle.load(open('data/vectors/emb_glosses_hyper_aug_gloss+r_sy+examples.txt', 'rb'))
+    emb_wn = pickle.load(open('data/vectors/aug_gloss+examples.txt', 'rb'))
     if 'lmms' in args.emb_strategy:
         lmms = pickle.load(open(args.lmms_path, 'rb'))
 
