@@ -15,7 +15,6 @@ from bert_as_service import bert_embed
 from vectorspace import SensesVSM
 from vectorspace import get_sk_pos
 
-from concat import *
 from synset_expand import *
 import pickle
 
@@ -42,7 +41,7 @@ def load_wsd_fw_set(wsd_fw_set_path):
             # handling multi-word expressions, mapping allows matching tokens with mw features
             idx_map_abs = []
             idx_map_rel = [(i, list(range(len(t.split()))))
-                            for i, t in enumerate(inst['tokens_mw'])]
+                           for i, t in enumerate(inst['tokens_mw'])]
             token_counter = 0
             for idx_group, idx_tokens in idx_map_rel:  # converting relative token positions to absolute
                 idx_tokens = [i+token_counter for i in idx_tokens]
@@ -99,9 +98,14 @@ def str_scores(scores, n=3, r=5):
     """Convert scores list to a more readable string."""
     return str([(l, round(s, r)) for l, s in scores[:n]])
 
+def wn_all_lexnames_groups():
+    groups = defaultdict(list)
+    for synset in wn.all_synsets():
+        groups[synset.lexname()].append(synset)
+    return dict(groups)
+
 
 def sec_wsd(matches):
-    from extend import wn_all_lexnames_groups
     lexname_groups = wn_all_lexnames_groups()
     preds = [sk for sk, sim in matches if sim > args.thresh][:]
     preds_sim = [sim for sk, sim in matches if sim > args.thresh][:]
