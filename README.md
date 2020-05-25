@@ -7,10 +7,11 @@ For a quick evaluation of our systems' (SREF<sub>kb</sub>, SREF<sub>sup</sub>) r
 
 ## Table of Contents
 - [Requirements](#Requirements)
-- [Augmented_gloss](#Crawl-augmented_gloss)
+- [Gloss_Augment](#Crawl-augmented_gloss)
 - [Loading BERT](#Loading-BERT)
-- [Basic sense embeddings](#basic-sense-embeddings)
-- [WSD evaluation](#WSD-evaluation)
+- [Basic Sense Embeddings](#basic-sense-embeddings)
+- [Sense Embeddings Enhancement](#sense embeddings enhancement)
+- [WSD Evaluation](#WSD-evaluation)
 
 
 ### Requirements
