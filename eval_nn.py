@@ -173,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('-merge_strategy', type=str, default='mean', help='WordPiece Reconstruction Strategy', required=False)
     parser.add_argument('-ignore_lemma', dest='use_lemma', action='store_false', help='Ignore lemma features', required=False)
     parser.add_argument('-ignore_pos', dest='use_pos', action='store_false', help='Ignore POS features', required=False)
-    parser.add_argument('-sec_wsd', default=True, help='whether to implement second wsd', required=False)
+    parser.add_argument('-sec_wsd', default=False, help='whether to implement second wsd', required=False)
     parser.add_argument('-thresh', type=float, default=-1, help='Similarity threshold', required=False)
     parser.add_argument('-k', type=int, default=1, help='Number of Neighbors to accept', required=False)
     parser.set_defaults(use_lemma=True)
