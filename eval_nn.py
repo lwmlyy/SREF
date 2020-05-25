@@ -98,6 +98,7 @@ def str_scores(scores, n=3, r=5):
     """Convert scores list to a more readable string."""
     return str([(l, round(s, r)) for l, s in scores[:n]])
 
+
 def wn_all_lexnames_groups():
     groups = defaultdict(list)
     for synset in wn.all_synsets():
