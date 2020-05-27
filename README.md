@@ -10,7 +10,7 @@ For a quick evaluation of our systems' (SREF<sub>kb</sub>, SREF<sub>sup</sub>) r
 - [Gloss_Augment](#Crawl-augmented_gloss)
 - [Loading BERT](#Loading-BERT)
 - [Basic Sense Embeddings](#basic-sense-embeddings)
-- [Sense Embeddings Enhancement](#sense embeddings enhancement)
+- [Sense Embeddings Enhancement](#Sense-embeddings-enhancement)
 - [WSD Evaluation](#WSD-evaluation)
 
 
@@ -42,6 +42,7 @@ $ unzip cased_L-24_H-1024_A-16.zip
 ### Crawl augmented_gloss
 Use example_expand.py to crawl sentences from a translation website. Note that we do not use any of the translation results or other information provided by the website. After this process, run example_filter.py to filter those noisy sentences.
 NOTE: this process takes a considerably lone time, especially for nouns. One can run four process (synsets for 4 POS) on different machines. Alternatively, you can download the processed files from [here](https://drive.google.com/open?id=1jNYVMm5yIUgTHN9YssobqOVEl-12v7QG) (put them in ./).
+
 ```bash
 $ python example_expand.py
 $ python example_filter.py
@@ -86,7 +87,7 @@ $ python emb_glosses.py -emb_strategy aug_gloss+examples
 
 Also, we provided the file: [aug_gloss+examples](https://drive.google.com/open?id=1Ef7--gC-jJXXjn8Dryp4umO6WnKQXvsD) so that you can implement the following codes conveniently (put them in /data/vectors).
 
-### sense embeddings enhancement
+### Sense embeddings enhancement
 run synset_expand.py to enhance the basic sense embeddings.
 ```bash
 $ python synset_expand.py
