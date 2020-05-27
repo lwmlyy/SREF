@@ -52,9 +52,9 @@ $ python example_filter.py
 
 The project relies on [bert-as-service](https://github.com/hanxiao/bert-as-service), to retrieve BERT embeddings. This process requires a GPU devise which has at least 5GB memory (Large memory, Faster processing). You should not set -max_seq_len to a large number unless it is necessary, because it slows down the process dramatically (a lot of padding of 0s and thus unnecessary calculations).
 
-####Parameter choice:  
-- -pooling_strategy REDUCE_MEAN, for basic sense embedding learning
-- -pooling_strategy NONE, for evaluation
+Parameter choice:  
+-pooling_strategy REDUCE_MEAN, for basic sense embedding learning
+-pooling_strategy NONE, for evaluation
 ```bash
 $ bert-serving-start -pooling_strategy REDUCE_MEAN -model_dir data/bert/cased_L-24_H-1024_A-16 -pooling_layer -1 -2 -3 -4 -max_seq_len NONE -max_batch_size 32 -num_worker=1 -device_map 0 -cased_tokenization
 $ bert-serving-start -pooling_strategy NONE -model_dir data/bert/cased_L-24_H-1024_A-16 -pooling_layer -1 -2 -3 -4 -max_seq_len NONE -max_batch_size 32 -num_worker=1 -device_map 0 -cased_tokenization
@@ -79,8 +79,9 @@ $ ps -ef  grep bert-serving-start  grep -v grep  awk '{print "kill -9 "$2}'  sh
 
 ### basic sense embeddings
 When the BERT server is ready, you should run emb_glosses.py to get the basic sense embeddings from the sense gloss, augmented sentences, and example sentences (usage). For SREF<sub>kb</sub>, run the following code:
-#####Parameter choice:  
-- -emb_strategy aug_gloss+examples, SREF<sub>enhanced</sub>, SREF<sub>sup</sub>
+
+Parameter choice:  
+-emb_strategy aug_gloss+examples, SREF<sub>enhanced</sub>, SREF<sub>sup</sub>
 ```bash
 $ python emb_glosses.py -emb_strategy aug_gloss+examples
 ```
@@ -97,10 +98,10 @@ $ python synset_expand.py
 Before evalution, you should stop the previous bert-as-server process and starts a new one with the parameter **-pooling_strategy** set to **NONE**.  
 When the basic embeddings and BERT server are ready, run eval_nn.py to evaluate our method. Note that we merge the synset expansion (synset_expand.py) algorithm in this file as a function. You should get the following results for the knowledge-based system  
 
-#####Parameter choice:  
-- -emb_strategy aug_gloss+examples, SREF<sub>kb</sub>
-- -emb_strategy aug_gloss+examples+lmms, SREF<sub>sup</sub>
-- -sec_wsd False to disable the second wsd/ try-again mechanism
+Parameter choice:  
+-emb_strategy aug_gloss+examples, SREF<sub>kb</sub>
+-emb_strategy aug_gloss+examples+lmms, SREF<sub>sup</sub>
+-sec_wsd False to disable the second wsd/ try-again mechanism
 
 ```bash
 $ python eval_nn.py -sec_wsd True -emb_strategy aug_gloss+examples
