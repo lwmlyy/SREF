@@ -81,7 +81,7 @@ $ ps -ef  grep bert-serving-start  grep -v grep  awk '{print "kill -9 "$2}'  sh
 When the BERT server is ready, you should run emb_glosses.py to get the basic sense embeddings from the sense gloss, augmented sentences, and example sentences (usage). For SREF<sub>kb</sub>, run the following code:
 
 Parameter choice:  
--emb_strategy aug_gloss+examples, SREF<sub>enhanced</sub>, SREF<sub>sup</sub>
+-emb_strategy aug_gloss+examples, SREF<sub>kb</sub>, SREF<sub>sup</sub>
 ```bash
 $ python emb_glosses.py -emb_strategy aug_gloss+examples
 ```
@@ -93,6 +93,8 @@ run synset_expand.py to enhance the basic sense embeddings.
 ```bash
 $ python synset_expand.py
 ```
+
+We also provide the file [emb_wn]() for convenient reproduction.
 
 ### WSD evaluation
 Before evalution, you should stop the previous bert-as-server process and starts a new one with the parameter **-pooling_strategy** set to **NONE**.  
